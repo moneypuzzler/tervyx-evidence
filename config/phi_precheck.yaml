@@ -1,0 +1,145 @@
+# Φ-Gate Pre-check Rules (Simplified for C Repo)
+# Purpose: Filter out obvious physical/physiological violations BEFORE expensive search/extraction
+# Full Φ-gate enforcement happens in A repo; this is just early rejection to save resources
+
+version: "v1"
+
+# ============================================================================
+# PHILOSOPHY: "Fail Fast" on Physical Impossibilities
+# ============================================================================
+# If intervention cannot plausibly affect outcome due to:
+#   - No physical contact/route (e.g., magnetic bracelet → blood pressure)
+#   - Category mismatch (e.g., topical cream → systemic glucose)
+#   - Known physical law violations (e.g., perpetual motion claims)
+# Then STOP immediately - no need to search PubMed
+# ============================================================================
+
+# Hard Exclusions (Intervention-Outcome Impossible Pairs)
+hard_exclusions:
+  # Non-contact devices with systemic claims
+  - intervention_pattern: "device_noninvasive.*magnetic.*"
+    outcome_pattern: "(cardiovascular|metabolic|sleep)"
+    reason: "Magnetic field from wearable device has no plausible mechanism for systemic metabolic/cardiovascular effects"
+    action: "reject"
+
+  - intervention_pattern: "device_noninvasive.*ionic.*"
+    outcome_pattern: "(detox|toxin)"
+    reason: "Ion generators cannot 'detoxify' blood or tissues through air exposure"
+    action: "reject"
+
+  # Topical with systemic claims (without stated transdermal mechanism)
+  - intervention_pattern: "supplement.*topical.*"
+    outcome_pattern: "(metabolic|cardiovascular|cognition)"
+    reason: "Topical application without transdermal delivery system cannot reach systemic circulation"
+    action: "warn"  # Warn, not reject (some transdermals are valid)
+
+  # Homeopathy (extreme dilutions)
+  - intervention_pattern: ".*homeopathic.*"
+    outcome_pattern: ".*"
+    reason: "Homeopathic dilutions (>12C) have no molecules of active ingredient remaining"
+    action: "reject"
+
+  # Prohibited substances (per intervention_based_v2 taxonomy)
+  - intervention_pattern: ".*(germanium|colloidal-silver|aristolochic-acid).*"
+    outcome_pattern: ".*"
+    reason: "Known toxic substances prohibited by regulatory agencies"
+    action: "reject"
+
+  # Energy healing claims without contact
+  - intervention_pattern: "behavioral.*reiki.*"
+    outcome_pattern: "(cancer|infection|metabolic)"
+    reason: "Non-contact energy healing has no mechanism for affecting cellular/metabolic processes"
+    action: "reject"
+
+# Route-Outcome Compatibility Checks
+route_checks:
+  oral:
+    allowed_outcomes: ["metabolic", "cardiovascular", "cognition", "mental_health", "sleep", "pain", "inflammation"]
+    mechanism_required: true
+
+  topical:
+    allowed_outcomes: ["skin", "pain_local", "inflammation_local"]
+    systemic_requires_mechanism: true
+
+  inhalation:
+    allowed_outcomes: ["respiratory", "sleep", "mental_health"]
+    mechanism_note: "Volatile compounds can cross blood-brain barrier"
+
+  transdermal:
+    allowed_outcomes: ["metabolic", "cardiovascular", "pain"]
+    mechanism_required: true
+
+  device_contact:
+    allowed_outcomes: ["pain", "inflammation", "skin", "muscle"]
+    non_contact_systemic: false  # Non-contact devices CANNOT have systemic effects
+
+# Category-Specific Requirements
+category_requirements:
+  device_noninvasive:
+    must_specify:
+      - "energy_type"  # light, sound, vibration, heat, cold
+      - "dosimetry"  # intensity, duration, frequency
+      - "coupling_mechanism"  # how energy reaches target tissue
+    forbidden_claims:
+      - "detoxification"
+      - "chakra balancing"
+      - "quantum healing"
+
+  supplement:
+    must_specify:
+      - "active_ingredient"
+      - "dosage"
+      - "route"  # oral, sublingual, topical, etc.
+    requires_bioavailability_check: true
+
+  behavioral:
+    allowed_mechanisms:
+      - "neuroplasticity"
+      - "stress_reduction"
+      - "habit_formation"
+      - "exposure_therapy"
+    requires_psychological_pathway: true
+
+# Early Warning System (not rejection, just flagging)
+warnings:
+  - condition: "dosage > typical_therapeutic_range * 10"
+    message: "Dosage appears unrealistically high - verify units"
+
+  - condition: "effect_claim contains 'cure|permanent|100%'"
+    message: "Absolute claims detected - will be penalized by L-gate in A repo"
+
+  - condition: "mechanism == 'quantum' AND !peer_reviewed_mechanism"
+    message: "Quantum mechanism claims require extraordinary evidence"
+
+# Taxonomy Alignment (must match intervention_based_v2)
+taxonomy:
+  intervention_types:
+    - supplements
+    - device_noninvasive
+    - behavioral
+    - foods
+    - pharmaceutical
+    - procedure
+
+  outcome_categories:
+    - sleep
+    - cardiovascular
+    - mental_health
+    - cognition
+    - metabolic
+    - pain
+    - inflammation
+    - safety
+
+# Φ-Precheck Execution
+execution:
+  mode: "fail_fast"  # Stop on first hard exclusion
+  log_rejections: true
+  log_warnings: true
+  allow_override: false  # Hard exclusions cannot be overridden
+
+metadata:
+  version: "v1"
+  purpose: "Early Φ-gate filtering to avoid wasting resources on physically impossible claims"
+  note: "Full Φ-gate with monotonic hard-cap is enforced in A repo during build"
+  reference: "See tervyx/protocol/taxonomy/intervention_based_v2.yaml for complete rules"

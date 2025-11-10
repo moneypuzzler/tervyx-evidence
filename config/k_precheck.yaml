@@ -1,0 +1,195 @@
+# K-Gate Pre-check (Safety Scanner for C Repo)
+# Purpose: Flag potential safety concerns BEFORE extraction to prioritize safety-focused searches
+# Full K-gate enforcement happens in A repo; this is early signal detection
+
+version: "v1"
+
+# ============================================================================
+# PHILOSOPHY: "Safety First" Signal Detection
+# ============================================================================
+# Scan for:
+#   - Known contraindications
+#   - Drug-supplement interactions
+#   - Toxic dose thresholds
+#   - Regulatory warnings
+# If detected, either STOP or flag for extra scrutiny in extraction phase
+# ============================================================================
+
+# High-Risk Substances (immediate flag)
+high_risk_substances:
+  - name: "ephedra"
+    reason: "Banned by FDA due to cardiovascular risks"
+    action: "reject"
+    reference: "FDA 2004"
+
+  - name: "germanium"
+    reason: "Nephrotoxic, hepatotoxic"
+    action: "reject"
+    reference: "FDA import alert"
+
+  - name: "aristolochic acid"
+    reason: "Carcinogenic, nephrotoxic"
+    action: "reject"
+    reference: "WHO IARC Group 1"
+
+  - name: "colloidal silver"
+    reason: "Causes argyria, no proven benefits"
+    action: "reject"
+    reference: "FDA warning"
+
+  - name: "kava"
+    reason: "Hepatotoxicity at high doses"
+    action: "warn"
+    max_safe_dose: "250 mg/day"
+    reference: "EMA restriction"
+
+# Dose-Dependent Safety Thresholds
+dose_thresholds:
+  - substance: "vitamin_a"
+    safe_range: "0-3000 mcg/day"
+    toxic_threshold: "10000 mcg/day"
+    risk: "teratogenic, hepatotoxic"
+
+  - substance: "iron"
+    safe_range: "0-45 mg/day"
+    toxic_threshold: "100 mg/day"
+    risk: "gastrointestinal damage, oxidative stress"
+
+  - substance: "selenium"
+    safe_range: "0-400 mcg/day"
+    toxic_threshold: "800 mcg/day"
+    risk: "selenosis (hair loss, nail brittleness, neurological)"
+
+  - substance: "zinc"
+    safe_range: "0-40 mg/day"
+    toxic_threshold: "150 mg/day"
+    risk: "copper deficiency, immune dysfunction"
+
+  - substance: "niacin"
+    safe_range: "0-35 mg/day"
+    toxic_threshold: "500 mg/day"
+    risk: "flushing, hepatotoxicity"
+
+# Drug-Supplement Interactions (major only)
+interactions:
+  - supplement: "st_johns_wort"
+    interacts_with: ["warfarin", "oral_contraceptives", "ssri", "immunosuppressants"]
+    mechanism: "CYP3A4 induction"
+    severity: "major"
+    action: "flag"
+
+  - supplement: "ginkgo_biloba"
+    interacts_with: ["anticoagulants", "antiplatelets"]
+    mechanism: "increased bleeding risk"
+    severity: "major"
+    action: "flag"
+
+  - supplement: "grapefruit"
+    interacts_with: ["statins", "calcium_channel_blockers", "immunosuppressants"]
+    mechanism: "CYP3A4 inhibition"
+    severity: "major"
+    action: "flag"
+
+  - supplement: "magnesium"
+    interacts_with: ["bisphosphonates", "antibiotics_quinolone", "antibiotics_tetracycline"]
+    mechanism: "chelation, reduced absorption"
+    severity: "moderate"
+    action: "note"
+
+# Contraindicated Populations
+contraindications:
+  - substance: "caffeine"
+    contraindicated_in: ["pregnancy_high_dose", "anxiety_disorders", "arrhythmia"]
+    threshold: ">400 mg/day"
+
+  - substance: "vitamin_k"
+    contraindicated_in: ["warfarin_users"]
+    reason: "antagonizes anticoagulation"
+
+  - substance: "iron"
+    contraindicated_in: ["hemochromatosis", "thalassemia"]
+    reason: "iron overload"
+
+  - substance: "ginseng"
+    contraindicated_in: ["autoimmune_disease", "hormone_sensitive_cancers"]
+    reason: "immune stimulation, estrogenic activity"
+
+# Regulatory Signals (FDA, EMA, Health Canada warnings)
+regulatory_warnings:
+  - substance: "kratom"
+    agency: "FDA"
+    warning: "risk of addiction, respiratory depression, death"
+    date: "2023"
+    action: "reject"
+
+  - substance: "dmaa"
+    agency: "FDA"
+    warning: "cardiovascular risks, banned in dietary supplements"
+    date: "2013"
+    action: "reject"
+
+  - substance: "phenibut"
+    agency: "FDA"
+    warning: "not approved, risk of dependence and withdrawal"
+    date: "2019"
+    action: "reject"
+
+# Adverse Event Database Hints
+adverse_event_keywords:
+  high_priority:
+    - "death"
+    - "hospitalization"
+    - "liver failure"
+    - "kidney failure"
+    - "anaphylaxis"
+    - "seizure"
+
+  medium_priority:
+    - "rash"
+    - "gastrointestinal"
+    - "headache"
+    - "dizziness"
+
+# K-Precheck Execution Logic
+execution:
+  scan_mode: "all_entries"  # Check every entry, not just safety-focused ones
+
+  actions:
+    reject:
+      log_message: "K-precheck REJECT: substance has known severe toxicity or regulatory ban"
+      stop_pipeline: true
+
+    flag:
+      log_message: "K-precheck FLAG: significant interaction or contraindication detected"
+      stop_pipeline: false
+      require_extra_scrutiny: true
+
+    warn:
+      log_message: "K-precheck WARN: dose-dependent risk, verify dosage in extraction"
+      stop_pipeline: false
+
+    note:
+      log_message: "K-precheck NOTE: minor interaction, document in metadata"
+      stop_pipeline: false
+
+  logging:
+    output_path: "outputs/evidence_catalog/{entry_id}/k_precheck.json"
+    include_references: true
+    timestamp: true
+
+# Integration with A Repo K-Gate
+handoff_to_a:
+  note: "K-precheck in C is EARLY DETECTION only. Full K-gate scoring happens in A repo."
+  data_passed_to_a:
+    - "k_precheck_verdict"  # reject/flag/warn/note/pass
+    - "safety_signals"  # list of detected concerns
+    - "references"  # regulatory/literature sources
+
+metadata:
+  version: "v1"
+  purpose: "Early safety signal detection in C repo to prevent extraction of dangerous claims"
+  scope: "Pre-screening only; full K-gate enforcement in A repo"
+  references:
+    - "FDA MedWatch"
+    - "EMA safety alerts"
+    - "Natural Medicines Database"

@@ -1,0 +1,164 @@
+# TERVYX Evidence Catalog - Initial Seed (12 entries, domain-balanced)
+# This catalog defines entries for which C repo will search, match, and extract evidence
+
+version: "v1"
+description: "Initial seed catalog for TERVYX evidence extraction - 12 balanced entries across health domains"
+
+defaults:
+  version: "v1"
+  max_studies: 5
+  min_design: "randomized controlled trial"
+  extraction_mode: "structured_json"
+  temperature: 0
+
+# Entry definitions
+entries:
+  # SLEEP (2 entries)
+  - id: SLP-MG-GLY-PSQI
+    intervention_type: supplements
+    subcategory: minerals
+    product: magnesium-glycinate
+    outcome: sleep
+    claim_text: "마그네슘 글리시네이트는 수면 질을 개선한다"
+    search_query: "magnesium glycinate sleep randomized controlled trial PSQI"
+    expected_effect_type: "SMD"
+    expected_direction: "decrease"  # Lower PSQI = better
+
+  - id: SLP-TEA-LAT
+    intervention_type: foods
+    subcategory: beverages
+    product: green-tea
+    outcome: sleep
+    claim_text: "녹차는 입면지연 시간을 줄인다"
+    search_query: "green tea sleep latency randomized"
+    expected_effect_type: "MD"
+    expected_direction: "decrease"
+
+  # CARDIOVASCULAR (3 entries)
+  - id: CARD-BEET-SBP
+    intervention_type: foods
+    subcategory: whole_foods
+    product: beetroot
+    outcome: cardiovascular
+    claim_text: "비트루트는 수축기혈압을 낮춘다"
+    search_query: "beetroot nitrate blood pressure randomized trial"
+    expected_effect_type: "MD"
+    expected_direction: "decrease"
+
+  - id: CARD-AEREX-SBP
+    intervention_type: behavioral
+    subcategory: exercise
+    product: aerobic-exercise
+    outcome: cardiovascular
+    claim_text: "지속적 유산소운동은 혈압을 낮춘다"
+    search_query: "aerobic exercise systolic blood pressure randomized"
+    expected_effect_type: "MD"
+    expected_direction: "decrease"
+
+  - id: CARD-GARLIC-LDL
+    intervention_type: foods
+    subcategory: whole_foods
+    product: garlic
+    outcome: cardiovascular
+    claim_text: "마늘은 LDL 콜레스테롤을 낮춘다"
+    search_query: "garlic LDL randomized trial"
+    expected_effect_type: "MD"
+    expected_direction: "decrease"
+
+  # MENTAL HEALTH (2 entries)
+  - id: MENT-ASHW-GAD7
+    intervention_type: supplements
+    subcategory: herbs_botanicals
+    product: ashwagandha
+    outcome: mental_health
+    claim_text: "아슈와간다는 불안 증상을 완화한다"
+    search_query: "ashwagandha anxiety GAD-7 randomized"
+    expected_effect_type: "SMD"
+    expected_direction: "decrease"
+
+  - id: MENT-MIND-DEP
+    intervention_type: behavioral
+    subcategory: meditation
+    product: mindfulness
+    outcome: mental_health
+    claim_text: "마인드풀니스는 우울 점수를 낮춘다"
+    search_query: "mindfulness depression PHQ-9 randomized"
+    expected_effect_type: "SMD"
+    expected_direction: "decrease"
+
+  # COGNITION (1 entry)
+  - id: COG-OM3-MOCA
+    intervention_type: supplements
+    subcategory: fatty_acids
+    product: omega-3
+    outcome: cognition
+    claim_text: "오메가3는 인지기능을 개선한다"
+    search_query: "omega-3 cognition RCT MoCA MMSE"
+    expected_effect_type: "SMD"
+    expected_direction: "increase"
+
+  # METABOLIC (1 entry)
+  - id: META-BERB-A1C
+    intervention_type: supplements
+    subcategory: alkaloids
+    product: berberine
+    outcome: metabolic
+    claim_text: "베르베린은 HbA1c를 낮춘다"
+    search_query: "berberine HbA1c randomized controlled trial"
+    expected_effect_type: "MD"
+    expected_direction: "decrease"
+
+  # DEVICE (1 entry)
+  - id: DEV-REDLIGHT-SLEEP
+    intervention_type: device_noninvasive
+    subcategory: photobiomodulation
+    product: red-light-therapy
+    outcome: sleep
+    claim_text: "적색광 치료는 수면지표를 개선한다"
+    search_query: "red light therapy sleep randomized controlled"
+    expected_effect_type: "SMD"
+    expected_direction: "increase"
+
+  # PROCEDURE (1 entry)
+  - id: PROC-ACU-PAIN
+    intervention_type: procedure
+    subcategory: acupuncture
+    product: acupuncture
+    outcome: pain
+    claim_text: "침술은 통증 점수를 줄인다"
+    search_query: "acupuncture pain randomized VAS"
+    expected_effect_type: "SMD"
+    expected_direction: "decrease"
+
+  # SAFETY (1 entry)
+  - id: SAFE-KIDNEY-EGFR
+    intervention_type: safety
+    subcategory: renal
+    product: any
+    outcome: renal_safety
+    claim_text: "특정 보충제의 eGFR에 대한 안전성"
+    search_query: "supplement eGFR randomized adverse events"
+    expected_effect_type: "MD"
+    expected_direction: "neutral"
+
+# Catalog metadata
+metadata:
+  total_entries: 12
+  domains:
+    sleep: 2
+    cardiovascular: 3
+    mental_health: 2
+    cognition: 1
+    metabolic: 1
+    device: 1
+    procedure: 1
+    safety: 1
+  intervention_types:
+    supplements: 3
+    foods: 3
+    behavioral: 2
+    device_noninvasive: 1
+    procedure: 1
+    safety: 1
+  created: "2025-11-10"
+  purpose: "Initial seed catalog for TERVYX paper (N=12, balanced for PoC demonstration)"
