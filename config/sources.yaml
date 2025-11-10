@@ -1,0 +1,183 @@
+# Data Sources Configuration for Literature Search
+# Defines endpoints, credentials, rate limits, and query templates
+
+version: "v1"
+
+# ============================================================================
+# PRIMARY SOURCES
+# ============================================================================
+
+pubmed:
+  enabled: true
+  api_endpoint: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+  tool_name: "tervyx-evidence"
+  email: "${TERVYX_EMAIL}"  # Required by NCBI, set in .env
+  api_key: "${NCBI_API_KEY}"  # Optional, increases rate limit from 3/sec to 10/sec
+
+  rate_limits:
+    requests_per_second: 3  # 10 with API key
+    max_retries: 3
+    backoff_factor: 2
+
+  search_parameters:
+    database: "pubmed"
+    retmax: 100  # Max results per query
+    sort: "relevance"
+    filters:
+      - "humans[MeSH Terms]"
+      - "english[Language]"
+      - "randomized controlled trial[Publication Type]"
+
+  fields_to_fetch:
+    - "doi"
+    - "title"
+    - "abstract"
+    - "journal"
+    - "year"
+    - "authors"
+    - "pmid"
+    - "pmc_id"
+
+pmc:
+  enabled: true
+  api_endpoint: "https://www.ncbi.nlm.nih.gov/pmc/utils/oa/oa.fcgi"
+  description: "PubMed Central - open access full texts"
+
+  access:
+    open_access_only: true
+    commercial_use_filter: false
+
+  rate_limits:
+    requests_per_second: 3
+    max_retries: 3
+
+# ============================================================================
+# SECONDARY SOURCES
+# ============================================================================
+
+crossref:
+  enabled: true
+  api_endpoint: "https://api.crossref.org/works"
+  mailto: "${TERVYX_EMAIL}"  # Polite pool access
+
+  rate_limits:
+    requests_per_second: 50  # Polite pool
+    max_retries: 3
+
+  filters:
+    type: "journal-article"
+    has_abstract: true
+    from_pub_date: "1990-01-01"
+
+  fields_to_fetch:
+    - "DOI"
+    - "title"
+    - "abstract"
+    - "container-title"  # Journal name
+    - "published-print"
+    - "author"
+
+unpaywall:
+  enabled: true
+  api_endpoint: "https://api.unpaywall.org/v2"
+  email: "${TERVYX_EMAIL}"  # Required
+
+  rate_limits:
+    requests_per_second: 10
+    max_retries: 3
+
+  purpose: "Find open access PDFs for papers discovered via PubMed/Crossref"
+
+semanticscholar:
+  enabled: false  # Optional, enable if needed
+  api_endpoint: "https://api.semanticscholar.org/graph/v1"
+  api_key: "${SEMANTIC_SCHOLAR_API_KEY}"
+
+  rate_limits:
+    requests_per_second: 10
+
+# ============================================================================
+# FULL-TEXT ACCESS
+# ============================================================================
+
+pdf_sources:
+  priority_order:
+    - "pmc"  # Try PMC first (free)
+    - "unpaywall"  # Then Unpaywall
+    - "doi_redirect"  # Then publisher page (may hit paywall)
+
+  download_settings:
+    timeout_seconds: 30
+    max_file_size_mb: 50
+    user_agent: "TERVYX-Evidence/0.1 (research use; contact: ${TERVYX_EMAIL})"
+
+  parsers:
+    prefer_xml: true  # XML > PDF for table extraction
+    fallback_to_pdf: true
+
+# ============================================================================
+# QUERY TEMPLATES
+# ============================================================================
+
+query_templates:
+  basic:
+    template: "{product} AND {outcome} AND (randomized controlled trial[pt] OR clinical trial[pt])"
+    example: "magnesium glycinate AND sleep AND (randomized controlled trial[pt])"
+
+  with_outcome_measure:
+    template: "{product} AND ({outcome} OR {measure}) AND randomized controlled trial[pt]"
+    example: "magnesium glycinate AND (sleep OR PSQI) AND randomized controlled trial[pt]"
+
+  safety_focused:
+    template: "{product} AND (adverse events OR safety OR toxicity) AND randomized controlled trial[pt]"
+
+  meta_analysis:
+    template: "{product} AND {outcome} AND (meta-analysis[pt] OR systematic review[pt])"
+
+# ============================================================================
+# CACHING
+# ============================================================================
+
+cache:
+  enabled: true
+  backend: "sqlite"  # or "redis" for production
+  cache_directory: "cache/"
+  ttl_seconds:
+    search_results: 604800  # 7 days
+    abstracts: 2592000  # 30 days
+    full_texts: 7776000  # 90 days
+
+# ============================================================================
+# LOGGING & MONITORING
+# ============================================================================
+
+logging:
+  log_all_queries: true
+  log_response_times: true
+  log_rate_limit_hits: true
+  output_path: "outputs/evidence_catalog/search_logs/"
+
+monitoring:
+  track_source_success_rates: true
+  track_cost_per_paper: false  # N/A for free sources
+  alert_on_repeated_failures: true
+
+# ============================================================================
+# ETHICAL & LEGAL
+# ============================================================================
+
+compliance:
+  respect_robots_txt: true
+  max_concurrent_requests: 5
+  identify_as_research_tool: true
+  commercial_use: false
+
+  terms_of_service:
+    pubmed: "https://www.ncbi.nlm.nih.gov/home/about/policies/"
+    crossref: "https://www.crossref.org/documentation/retrieve-metadata/rest-api/terms-of-use/"
+    unpaywall: "https://unpaywall.org/faq"
+
+metadata:
+  version: "v1"
+  purpose: "Configure literature search sources for TERVYX C repo"
+  note: "Set environment variables in .env file"

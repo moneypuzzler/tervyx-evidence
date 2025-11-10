@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tervyx.org/schemas/esv/v1",
+  "title": "Evidence State Vector (ESV) Schema",
+  "description": "Required schema for evidence.csv files produced by C repo for consumption by A repo's deterministic pipeline",
+  "version": "v1",
+
+  "type": "object",
+  "required": ["records"],
+
+  "properties": {
+    "records": {
+      "type": "array",
+      "description": "Array of evidence records (rows in evidence.csv)",
+      "items": {
+        "$ref": "#/definitions/EvidenceRecord"
+      }
+    }
+  },
+
+  "definitions": {
+    "EvidenceRecord": {
+      "type": "object",
+      "description": "Single row of evidence.csv - one study's extracted data",
+      "required": [
+        "study_id",
+        "year",
+        "design",
+        "effect_type",
+        "effect_point",
+        "ci_low",
+        "ci_high",
+        "n_treat",
+        "n_ctrl",
+        "risk_of_bias",
+        "doi",
+        "journal_id"
+      ],
+
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "description": "Unique identifier for study, e.g., 'Nguyen2022', 'Smith2023a'",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,50}$",
+          "examples": ["Nguyen2022", "Smith2023a"]
+        },
+
+        "year": {
+          "type": "integer",
+          "description": "Publication year",
+          "minimum": 1990,
+          "maximum": 2025
+        },
+
+        "design": {
+          "type": "string",
+          "description": "Study design type",
+          "enum": [
+            "randomized controlled trial",
+            "crossover trial",
+            "cluster randomized trial",
+            "quasi-experimental"
+          ]
+        },
+
+        "effect_type": {
+          "type": "string",
+          "description": "Type of effect size measure",
+          "enum": ["SMD", "MD", "OR", "RR", "HR"],
+          "examples": ["SMD", "MD"]
+        },
+
+        "effect_point": {
+          "type": "number",
+          "description": "Point estimate of effect size (EXACT copy from paper, NO calculation)"
+        },
+
+        "ci_low": {
+          "type": "number",
+          "description": "Lower bound of 95% confidence interval (EXACT copy from paper)"
+        },
+
+        "ci_high": {
+          "type": "number",
+          "description": "Upper bound of 95% confidence interval (EXACT copy from paper)"
+        },
+
+        "n_treat": {
+          "type": "integer",
+          "description": "Sample size in treatment/intervention group",
+          "minimum": 1
+        },
+
+        "n_ctrl": {
+          "type": "integer",
+          "description": "Sample size in control/comparison group",
+          "minimum": 1
+        },
+
+        "risk_of_bias": {
+          "type": "string",
+          "description": "Overall risk of bias assessment",
+          "enum": ["low", "moderate", "high", "unclear"]
+        },
+
+        "doi": {
+          "type": "string",
+          "description": "Digital Object Identifier (without https://doi.org/ prefix)",
+          "pattern": "^10\\.[0-9]{4,}/[\\S]+$",
+          "examples": ["10.1234/abcd.5678"]
+        },
+
+        "journal_id": {
+          "type": "string",
+          "description": "Journal identifier (ISSN or standardized abbreviation) for J-Oracle lookup",
+          "examples": ["0140-6736", "N-Engl-J-Med"]
+        },
+
+        "outcome_measure": {
+          "type": "string",
+          "description": "Specific outcome measure name (e.g., 'PSQI', 'SBP', 'GAD-7')",
+          "examples": ["PSQI", "SBP", "HbA1c", "MoCA"]
+        },
+
+        "outcome_direction": {
+          "type": "string",
+          "description": "Direction where higher values = better/worse",
+          "enum": ["higher_is_better", "lower_is_better", "neutral"]
+        },
+
+        "intervention_dose": {
+          "type": "string",
+          "description": "Intervention dosage (as stated in paper)",
+          "examples": ["400 mg/day", "30 min/session", "650 nm at 10 mW/cm²"]
+        },
+
+        "duration_weeks": {
+          "type": "number",
+          "description": "Intervention duration in weeks",
+          "minimum": 0
+        },
+
+        "population": {
+          "type": "string",
+          "description": "Target population description",
+          "examples": ["healthy adults", "adults with insomnia", "type 2 diabetes patients"]
+        },
+
+        "age_mean": {
+          "type": "number",
+          "description": "Mean age of participants (optional)",
+          "minimum": 0,
+          "maximum": 120
+        },
+
+        "percent_female": {
+          "type": "number",
+          "description": "Percentage of female participants (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+
+        "extraction_confidence": {
+          "type": "string",
+          "description": "Confidence in extraction accuracy",
+          "enum": ["high", "medium", "low"]
+        },
+
+        "source_location": {
+          "type": "string",
+          "description": "Where numbers were extracted from (e.g., 'Table 2, row PSQI, page 7')",
+          "examples": ["Table 2, row PSQI", "Abstract", "Figure 3"]
+        },
+
+        "notes": {
+          "type": "string",
+          "description": "Any additional notes or caveats"
+        }
+      },
+
+      "additionalProperties": false
+    }
+  },
+
+  "validation_rules": {
+    "ci_order": "ci_low <= effect_point <= ci_high (for positive effects) OR ci_high <= effect_point <= ci_low (for negative effects)",
+    "sample_sizes": "n_treat > 0 AND n_ctrl > 0",
+    "year_range": "1990 <= year <= 2025",
+    "doi_format": "Must match pattern 10.xxxx/yyyy"
+  },
+
+  "csv_format": {
+    "delimiter": ",",
+    "encoding": "utf-8",
+    "header_row": true,
+    "quote_char": "\"",
+    "escape_char": "\\",
+    "null_representation": ""
+  },
+
+  "critical_constraints": {
+    "no_calculation": "effect_point, ci_low, ci_high MUST be exact copies from paper - NO calculation, conversion, or estimation allowed",
+    "no_imputation": "If CI is missing, leave blank - do NOT calculate from SE or p-value",
+    "no_unit_conversion": "Copy numbers AS-IS - unit conversion happens in A repo based on category delta",
+    "no_aggregation": "Each row = one study outcome - do NOT pool subgroups"
+  },
+
+  "handoff_contract": {
+    "producer": "C repo (tervyx-evidence)",
+    "consumer": "A repo (tervyx) - deterministic build pipeline",
+    "guarantee": "If this schema is satisfied, A repo can compute REML+MC meta-analysis and apply gates deterministically",
+    "path_convention": "outputs/evidence_catalog/{intervention_type}/{subcategory}/{product}/{outcome}/v{version}/evidence.csv"
+  },
+
+  "metadata": {
+    "schema_version": "v1",
+    "created": "2025-11-10",
+    "purpose": "Define contract between C (extraction) and A (deterministic evaluation)",
+    "reference_implementation": "tervyx-evidence tools/generate_evidence.py"
+  }
+}

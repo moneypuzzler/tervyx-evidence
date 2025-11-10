@@ -1,0 +1,148 @@
+# TERVYX Extraction Policy - LLM Usage Boundaries & Constraints
+# Defines WHERE and HOW LLMs can be used in C repo (extraction-only, NO judgment)
+
+version: "v1"
+
+# ============================================================================
+# CORE PRINCIPLE: LLM as "EXTRACTOR", NOT "JUDGE"
+# ============================================================================
+# LLMs in C repo are ONLY allowed for:
+#   1. Search assistance (query expansion, relevance matching)
+#   2. Exact numerical extraction from tables/text (temperature=0, JSON mode)
+#
+# LLMs are PROHIBITED from:
+#   - Effect size calculation/estimation/conversion
+#   - Missing value imputation/interpolation
+#   - "Likely/probable/possible" judgments or inferences
+#   - Final labeling (that's A repo's job via policy-as-code)
+# ============================================================================
+
+# LLM Configuration
+llm:
+  default_provider: "openai"
+
+  models:
+    matching:
+      name: "gpt-4o-mini"
+      temperature: 0
+      max_tokens: 1000
+      response_format: "json_object"
+
+    extraction:
+      name: "gpt-4o-mini"
+      temperature: 0  # CRITICAL: deterministic extraction
+      max_tokens: 2000
+      response_format: "json_object"  # MANDATORY: enforce structured output
+
+  retry_policy:
+    max_attempts: 3
+    backoff_factor: 2  # exponential: 2s, 4s, 8s
+    retry_on: ["rate_limit", "timeout", "server_error"]
+
+  cost_limits:
+    max_cost_per_entry_usd: 0.50
+    warn_threshold_usd: 0.30
+
+# Extraction Rules
+extraction:
+  mode: "structured_json"
+
+  mandatory_fields:
+    - "study_id"
+    - "year"
+    - "design"
+    - "effect_type"
+    - "effect_point"
+    - "ci_low"
+    - "ci_high"
+    - "n_treat"
+    - "n_ctrl"
+    - "risk_of_bias"
+    - "doi"
+    - "journal_id"
+
+  # CRITICAL: What LLM CAN do
+  allowed_operations:
+    - "locate_table_coordinates"  # Find "Table 2, Row 3"
+    - "copy_exact_numbers"  # Copy "−1.8 (95% CI: −3.0, −0.6)" AS-IS
+    - "identify_text_snippets"  # Find snippets with numbers
+    - "parse_structured_formats"  # Extract from HTML tables, JSON, XML
+
+  # CRITICAL: What LLM CANNOT do
+  prohibited_operations:
+    - "calculate_effect_sizes"  # NO conversion: raw mean → SMD
+    - "estimate_missing_ci"  # NO imputation: SE → 95% CI
+    - "infer_sample_sizes"  # NO guessing: "about 50" → n=50
+    - "convert_units"  # NO conversion: mg/dL → mmol/L (unless stated)
+    - "aggregate_subgroups"  # NO pooling: men + women
+    - "extrapolate_timepoints"  # NO filling: 4-week → 8-week
+
+  validation:
+    enforce_numeric_types: true
+    check_ci_order: true  # ci_low < effect_point < ci_high
+    check_sample_sizes: true  # n_treat, n_ctrl > 0
+    check_year_range: [1990, 2025]
+
+  provenance:
+    log_source_coordinates: true  # "Table 2, row 'PSQI total', page 7"
+    log_text_snippets: true  # Quote original text
+    log_model_info: true  # model name, version, temperature, tokens
+    compute_extraction_hash: true  # SHA256 of prompt+response
+
+# Matching Policy
+matching:
+  relevance_threshold: 0.7  # 0-1 score for entry-paper alignment
+
+  criteria:
+    - intervention_match: 0.3  # Product name match
+    - outcome_match: 0.3  # Outcome measure match
+    - design_match: 0.2  # Study design (RCT required)
+    - population_match: 0.2  # Target population
+
+  filters:
+    require_rct: true
+    require_full_text: false  # Abstracts OK if numbers present
+    min_publication_year: 1990
+
+# Caching (to reduce cost)
+cache:
+  enabled: true
+  cache_abstracts: true
+  cache_full_text: false  # Full PDFs too large
+  ttl_seconds: 2592000  # 30 days
+
+# Audit & Logging
+audit:
+  log_all_llm_calls: true
+  log_prompts: true
+  log_responses: true
+  log_token_usage: true
+  log_timestamps: true
+
+  output_format: "jsonlines"  # One JSON object per line
+  output_path: "outputs/evidence_catalog/{entry_id}/extraction_log.jsonl"
+
+# Safety & Content Filters
+safety:
+  enable_content_filtering: false  # Medical papers may contain sensitive terms
+  max_concurrent_requests: 5
+  rate_limit_per_minute: 60
+
+# Development & Debugging
+debug:
+  verbose_logging: false
+  save_intermediate_outputs: true
+  dry_run_mode: false  # If true, skip actual LLM calls
+  use_mock_responses: false  # For testing without API costs
+
+# Schema Validation
+schema:
+  validate_against_esv: true
+  esv_schema_path: "protocol/esv.schema.json"
+  strict_mode: true  # Reject entries with missing mandatory fields
+
+metadata:
+  policy_version: "v1"
+  created: "2025-11-10"
+  purpose: "Define LLM boundaries for TERVYX C repo - extraction ONLY, no judgment"
+  critical_note: "This policy enforces the 'LLM as extractor' principle for reproducibility"
