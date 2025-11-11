@@ -17,6 +17,10 @@ import time
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
