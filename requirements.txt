@@ -9,7 +9,11 @@ python-dotenv>=1.0.0
 httpx>=0.25.0
 biopython>=1.81
 
-# LLM integrations (optional, install as needed)
+# LLM integrations (install as needed)
+# Gemini (PRIMARY - confirmed for TERVYX)
+google-generativeai>=0.3.0
+
+# Alternative LLMs (optional)
 # openai>=1.3.0
 # anthropic>=0.7.0
 

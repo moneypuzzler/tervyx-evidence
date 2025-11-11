@@ -1,0 +1,429 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tervyx.org/schemas/esv_context/v1",
+  "title": "Evidence State Vector Context (ESV_context) Schema",
+  "description": "Extended context schema for evidence extracted by C repo - complements ESV with clinical/narrative/safety context",
+  "version": "v1",
+
+  "type": "object",
+  "required": ["records"],
+
+  "properties": {
+    "records": {
+      "type": "array",
+      "description": "Array of context records (one per study outcome)",
+      "items": {
+        "$ref": "#/definitions/ContextRecord"
+      }
+    }
+  },
+
+  "definitions": {
+    "ContextRecord": {
+      "type": "object",
+      "description": "Extended context for a single study outcome (maps 1:1 to ESV record)",
+      "required": [
+        "study_id",
+        "outcome_context",
+        "clinical_context",
+        "narrative"
+      ],
+
+      "properties": {
+        "study_id": {
+          "type": "string",
+          "description": "Study identifier (must match ESV record)",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,50}$"
+        },
+
+        "extraction_metadata": {
+          "type": "object",
+          "description": "Extraction process metadata",
+          "required": ["model", "temperature", "timestamp"],
+          "properties": {
+            "model": {
+              "type": "string",
+              "description": "LLM model used for extraction",
+              "examples": ["gemini-2.5-flash-lite", "gemini-1.5-flash"]
+            },
+            "vendor": {
+              "type": "string",
+              "enum": ["google", "openai", "anthropic"],
+              "default": "google"
+            },
+            "temperature": {
+              "type": "number",
+              "description": "Temperature setting (MUST be 0 for reproducibility)",
+              "enum": [0]
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Extraction timestamp (ISO 8601)"
+            },
+            "extraction_method": {
+              "type": "string",
+              "enum": ["llm_abstract", "llm_fulltext", "pmc_table_parse", "manual"],
+              "description": "How evidence was extracted"
+            }
+          }
+        },
+
+        "outcome_context": {
+          "type": "object",
+          "description": "Details about the outcome measure",
+          "required": ["measure_name"],
+          "properties": {
+            "measure_name": {
+              "type": "string",
+              "description": "Full name of outcome measure as stated in paper",
+              "examples": ["PSQI total score", "ISI score", "Systolic blood pressure", "GAD-7"]
+            },
+
+            "measure_type": {
+              "type": "string",
+              "description": "Type of outcome measure",
+              "enum": [
+                "validated_scale",
+                "objective_biomarker",
+                "self_report",
+                "clinical_event",
+                "physiological_measure",
+                "performance_test",
+                "other"
+              ]
+            },
+
+            "units": {
+              "type": "string",
+              "description": "Measurement units",
+              "examples": ["points", "mmHg", "mg/dL", "minutes", "percent"]
+            },
+
+            "scale_range": {
+              "type": "string",
+              "description": "Valid range for scale (if applicable)",
+              "examples": ["0-21", "0-28", "0-100"]
+            },
+
+            "direction": {
+              "type": "string",
+              "description": "Direction of benefit",
+              "enum": [
+                "decrease_is_benefit",
+                "increase_is_benefit",
+                "neutral",
+                "unclear"
+              ]
+            },
+
+            "assessment_method": {
+              "type": "string",
+              "description": "How outcome was assessed",
+              "examples": [
+                "self-report questionnaire",
+                "automated blood pressure monitor",
+                "laboratory assay",
+                "clinician-rated scale",
+                "actigraphy",
+                "polysomnography"
+              ]
+            },
+
+            "assessment_timing": {
+              "type": "string",
+              "description": "When outcome was measured",
+              "examples": ["baseline and 8 weeks", "daily for 4 weeks", "pre/post intervention"]
+            }
+          }
+        },
+
+        "effect_context": {
+          "type": "object",
+          "description": "Additional effect size context",
+          "properties": {
+            "baseline_mean_treatment": {
+              "type": "number",
+              "description": "Mean at baseline (treatment group)"
+            },
+
+            "baseline_mean_control": {
+              "type": "number",
+              "description": "Mean at baseline (control group)"
+            },
+
+            "absolute_change": {
+              "type": "number",
+              "description": "Absolute change from baseline (if stated)"
+            },
+
+            "percent_change": {
+              "type": "number",
+              "description": "Percent change from baseline (if stated)"
+            },
+
+            "p_value": {
+              "type": "string",
+              "description": "P-value as stated (e.g., '<0.001', '0.042')"
+            },
+
+            "mcid_mentioned": {
+              "type": "boolean",
+              "description": "Did authors mention minimal clinically important difference?"
+            },
+
+            "mcid_value": {
+              "type": "number",
+              "description": "MCID value if stated by authors"
+            },
+
+            "meets_mcid": {
+              "type": "boolean",
+              "description": "Does effect meet stated MCID threshold?"
+            },
+
+            "responder_analysis": {
+              "type": "object",
+              "description": "Responder analysis if reported",
+              "properties": {
+                "definition": {
+                  "type": "string",
+                  "description": "Definition of 'responder'"
+                },
+                "rate_treatment": {
+                  "type": "number",
+                  "description": "Proportion responding in treatment group (0-1)"
+                },
+                "rate_control": {
+                  "type": "number",
+                  "description": "Proportion responding in control group (0-1)"
+                }
+              }
+            }
+          }
+        },
+
+        "clinical_context": {
+          "type": "object",
+          "description": "Clinical trial context",
+          "required": ["population"],
+          "properties": {
+            "population": {
+              "type": "string",
+              "description": "Target population description",
+              "examples": [
+                "adults with chronic insomnia",
+                "elderly with mild cognitive impairment",
+                "adults with prehypertension"
+              ]
+            },
+
+            "baseline_severity": {
+              "type": "string",
+              "description": "Baseline severity/characteristics",
+              "examples": [
+                "moderate-severe insomnia (ISI > 15)",
+                "SBP 130-139 mmHg",
+                "PSQI > 10"
+              ]
+            },
+
+            "age_range": {
+              "type": "string",
+              "description": "Age range or mean ± SD",
+              "examples": ["18-65", "mean 52.3 ± 8.1"]
+            },
+
+            "sex_distribution": {
+              "type": "string",
+              "description": "Sex distribution of participants",
+              "examples": ["65% female", "all male", "mixed"]
+            },
+
+            "intervention_description": {
+              "type": "string",
+              "description": "Detailed intervention description",
+              "examples": [
+                "magnesium glycinate 400mg/day",
+                "KSM-66 ashwagandha 300mg twice daily",
+                "30 minutes aerobic exercise 5x/week"
+              ]
+            },
+
+            "intervention_duration": {
+              "type": "string",
+              "description": "Duration of intervention",
+              "examples": ["8 weeks", "12 weeks", "6 months"]
+            },
+
+            "control_description": {
+              "type": "string",
+              "description": "Control/comparator description",
+              "examples": ["placebo", "usual care", "waitlist"]
+            },
+
+            "setting": {
+              "type": "string",
+              "description": "Study setting",
+              "examples": ["outpatient clinic", "community-dwelling", "university lab"]
+            }
+          }
+        },
+
+        "narrative": {
+          "type": "object",
+          "description": "Narrative/interpretation from authors",
+          "required": ["abstract_full_text"],
+          "properties": {
+            "abstract_full_text": {
+              "type": "string",
+              "description": "Complete abstract text (for audit trail)"
+            },
+
+            "author_effect_description": {
+              "type": "string",
+              "description": "How authors described the effect in results section",
+              "examples": [
+                "significant improvement in sleep quality",
+                "clinically meaningful reduction in blood pressure",
+                "modest but significant decrease"
+              ]
+            },
+
+            "author_conclusion": {
+              "type": "string",
+              "description": "Authors' conclusion statement",
+              "examples": [
+                "Magnesium appears effective for improving sleep quality in elderly",
+                "Results support use of X for Y in this population"
+              ]
+            },
+
+            "clinical_significance_claimed": {
+              "type": "boolean",
+              "description": "Did authors explicitly claim clinical significance?"
+            },
+
+            "key_quotes": {
+              "type": "array",
+              "description": "1-3 key sentences from abstract (for human review)",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 3
+            },
+
+            "span_references": {
+              "type": "array",
+              "description": "Character spans where numbers were extracted (for verification)",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "description": "Which field this span supports"
+                  },
+                  "start": {
+                    "type": "integer",
+                    "description": "Start character index in abstract_full_text"
+                  },
+                  "end": {
+                    "type": "integer",
+                    "description": "End character index"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Extracted text snippet"
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        "safety": {
+          "type": "object",
+          "description": "Safety/adverse events context",
+          "properties": {
+            "adverse_events_mentioned": {
+              "type": "boolean",
+              "description": "Were adverse events discussed in abstract?"
+            },
+
+            "adverse_event_summary": {
+              "type": "string",
+              "description": "Brief summary of adverse events if mentioned",
+              "examples": [
+                "No serious adverse events reported",
+                "Mild GI discomfort in 3 participants",
+                "Well tolerated with no dropouts due to AEs"
+              ]
+            },
+
+            "safety_conclusion": {
+              "type": "string",
+              "description": "Authors' safety conclusion"
+            }
+          }
+        },
+
+        "quality_flags": {
+          "type": "object",
+          "description": "Data quality indicators",
+          "properties": {
+            "extraction_confidence": {
+              "type": "string",
+              "enum": ["high", "medium", "low"],
+              "description": "Confidence in extraction accuracy"
+            },
+
+            "needs_manual_review": {
+              "type": "boolean",
+              "description": "Flag for manual expert review",
+              "default": false
+            },
+
+            "review_reason": {
+              "type": "string",
+              "description": "Why manual review is needed",
+              "examples": [
+                "numbers unclear in abstract",
+                "multiple outcomes reported",
+                "complex intervention"
+              ]
+            },
+
+            "data_source": {
+              "type": "string",
+              "enum": ["abstract_only", "pmc_fulltext", "pmc_tables", "manual_entry"],
+              "description": "Source of extracted data"
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "validation_rules": {
+    "study_id_match": "study_id MUST match corresponding record in ESV (evidence.csv)",
+    "temperature_zero": "extraction_metadata.temperature MUST be 0",
+    "abstract_present": "narrative.abstract_full_text MUST NOT be empty",
+    "span_valid": "span_references indices must be valid for abstract_full_text"
+  },
+
+  "csv_representation": {
+    "note": "This schema is for JSONL storage. For CSV export, nest complex fields as JSON strings or create separate tables.",
+    "suggested_tables": [
+      "evidence_context_main.csv (flat fields)",
+      "evidence_context_spans.csv (span references, 1:N)",
+      "evidence_context_quotes.csv (key quotes, 1:N)"
+    ]
+  },
+
+  "metadata": {
+    "schema_version": "v1",
+    "created": "2025-11-11",
+    "purpose": "Capture clinical/narrative context for evidence - complements numeric ESV",
+    "handoff": "A repo uses outcome_context + clinical_context for harmonization to category policy"
+  }
+}
