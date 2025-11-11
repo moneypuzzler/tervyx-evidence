@@ -156,12 +156,17 @@ class GeminiExtractor:
 
                     logger.info(f"✓ Successfully extracted {study_id}")
 
+                    # Safely extract token count (usage_metadata can be None)
+                    tokens_used = None
+                    if hasattr(response, 'usage_metadata') and response.usage_metadata is not None:
+                        tokens_used = getattr(response.usage_metadata, 'total_token_count', None)
+
                     return ExtractionResult(
                         success=True,
                         data=data,
                         model=self.model_name,
                         temperature=self.temperature,
-                        tokens_used=response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None,
+                        tokens_used=tokens_used,
                     )
 
                 except json.JSONDecodeError as e:
